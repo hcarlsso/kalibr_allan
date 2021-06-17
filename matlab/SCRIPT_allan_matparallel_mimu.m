@@ -46,12 +46,13 @@ taumax = max(tau);
 % taumax will determine the number of measurements 
 
 N_tot = size(inertial_data_double_rot,2)
-N = m(end)*10
+N = m(end)*18
 % N = N_tot;
 N_hours = N_tot/update_rate/3600
 N_hours = N/update_rate/3600
 slice = (1:N) + 140000 + 2.5e6;
 
+end_index = slice(end)
 %%
 
 fprintf('Slice data.\n')

@@ -1,91 +1,75 @@
-function [fh1, sigmaw, sigmab] = gen_chart(tau,sigx,sigy,sigz,titlestr,name,unit0,unit1,unit2)
+function [fh1] = gen_chart(tau,sig,titlestr,name,unit,white_n, rw_n)
 
-% Calculate our average sigma values
-sigavg = mean([sigx;sigy;sigz]);
+tau = reshape(tau,[],1);
 
 % =======================================================================
 % Plot the results on a figure
 fh1 = figure;
-loglog(tau, sigx); hold on;
-loglog(tau, sigy); hold on;
-loglog(tau, sigz); hold on;
-loglog(tau, sigavg); hold on;
+ls = ["-", "-", "-"];
+dirs = ["x","y","z"];
+for i = 1:3
+    label = strcat(dirs(i),'-',name);
+    loglog(tau, sig(:,i), ls(i), "DisplayName",label); hold on;
+end
 grid on;
 title([titlestr,' ',name]);
 xlabel('\tau [sec]');
-ylabel(['Normal Allan Deviation [',unit0,']']);
-legend(['x-',name],['y-',name],['z-',name],'average','Location','southeast');
+ylabel(['Normal Allan Deviation [',unit,']']);
+cOrder = get(gca,'colororder');
 
 % =======================================================================
-% Find location of tau=1 by finding where difference is near zero
-tauref = 1;
-taudiff = abs(tau-tauref);
-tauid1 = find(taudiff == min(taudiff),1);
-fprintf('tau = %.2f | tauid1 = %d\n',tau(tauid1),tauid1);
+% Estimate N2
 
-% We will fit our "white-noise" line where tau is 1
-windowsize = 50;
-%window = tauid1-windowsize:tauid1+windowsize;
-minid = find(sigavg == min(sigavg)); % find where the min is
-window = 1:minid-windowsize; % go from start to min
+mask_min = tau > white_n.taumin;
+mask_max = tau < white_n.taumax;
+mask = logical(mask_min .* mask_max);
+A = 1./tau;
+sig2 = sig.^2;
+A_eff = A(mask,:);
+% Should weight with standard error of sig2
+N2 = (A_eff'*A_eff)\(A_eff'*sig2(mask,:));
+sig2_hat = A*N2;
 
-% Get our x and y values
-x = tau(window);
-y = sigavg(window);
-nanx = isfinite(y);
-
-% Fit to log-log scale (slope of -1/2)
-%coeffs = polyfit(log(x(nanx)), log(y(nanx)), 1);
-coeffs(1)= -0.5;
-intcs = log(y(nanx)./x(nanx).^coeffs(1));
-coeffs(2) = mean(intcs);
-fprintf('h_fit1 slope = %.4f | y-intercept = %.4f\n',coeffs(1),coeffs(2));
-
-% Convert from logarithmic scale to linear scale and plot
-h_fit1 = tau.^coeffs(1).*exp(coeffs(2));
-pltlin = plot(tau, h_fit1,'Color','r','LineWidth',2); hold on;
-pltlin.Color(4) = 0.5; % make it semi-transparent
+sig_hat = sqrt(sig2_hat);
+N = sqrt(N2);
+for i = 1:3
+    label = sprintf("N=%.2e", N(i));
+    loglog(tau, sig_hat(:,i),"--", 'Color', cOrder(i,:), "DisplayName", label); hold on;
+end
 
 
 % =======================================================================
-% Next we should fit a 1/2 line to the bias side of the allan plot
-minid = find(sigavg == min(sigavg)); % find where the min is
-window = minid+windowsize:length(tau); % go from min to the end
+% Estimate K2
 
-% Get our x and y values
-x = tau(window);
-y = sigavg(window);
-nanx = isfinite(y);
+mask_min = tau > rw_n.taumin;
+mask_max = tau < rw_n.taumax;
+mask = logical(mask_min .* mask_max);
+A = tau/3;
+sig2 = sig.^2;
+A_eff = A(mask,:);
+% Should weight with standard error of sig2
+K2 = (A_eff'*A_eff)\(A_eff'*sig2(mask,:));
+sig2_hat = A*K2;
 
-% Calculate the intercept given the slope of +1/2
-coeffs(1)= 0.5;
-intcs = log(y(nanx)./x(nanx).^coeffs(1));
-coeffs(2) = mean(intcs);
-fprintf('h_fit2 slope = %.4f | y-intercept = %.4f\n',0.5,mean(intcs));
-
-% Convert from logarithmic scale to linear scale and plot
-h_fit2 = tau.^coeffs(1).*exp(coeffs(2));
-pltlin = plot(tau, h_fit2,'Color','b','LineWidth',2); hold on;
-pltlin.Color(4) = 0.5; % make it semi-transparent
-
-
-% Get what our bias should be (should be at a tau of 3)
-tauref = 3;
-taudiff = abs(tau-tauref);
-tauid2 = find(taudiff == min(taudiff),1);
-fprintf('tau = %.2f | tauid2 = %d\n',tau(tauid2),tauid2);
+sig_hat = sqrt(sig2_hat);
+K = sqrt(K2);
+for i = 1:3
+    label = sprintf("K=%.2e", K(i));
+    loglog(tau, sig_hat(:,i),"--", 'Color', cOrder(i,:), "DisplayName", label); hold on;
+end
 
 
-% =======================================================================
-% Record the values for the output
-sigmaw = h_fit1(tauid1);
-sigmab = h_fit2(tauid2);
+legend('Location','southwest', "AutoUpdate","off");
 
-% Plot the values
-str1 = sprintf('\\sigma = %.6f %s',h_fit1(tauid1),unit1);
-str2 = sprintf('\\sigma_{b} = %.6f %s',h_fit2(tauid2),unit2);
-text(.1,.15,{str1,str2},'Units','normalized'); %'FontWeight','bold'
+yLim = get(gca, "YLim");
 
+patch([white_n.taumin white_n.taumin white_n.taumax white_n.taumax],...
+    [yLim(2) yLim(1) yLim(1) yLim(2)],ones(1,4),...
+    'FaceColor','b','facealpha',0.2);
+
+patch([rw_n.taumin rw_n.taumin rw_n.taumax rw_n.taumax],...
+    [yLim(2) yLim(1) yLim(1) yLim(2)],ones(1,4),...
+    'FaceColor','r','facealpha',0.2);
 
 end
 

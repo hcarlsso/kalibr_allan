@@ -94,19 +94,19 @@ for j=1:jj
     end
     
     %standard deviation
-    avar.sig(j)=std(D(1:m(j):n-m(j)+1));
-    avar.sigerr(j)=avar.sig(j)/sqrt(n/m(j));
+    % avar.sig(j)=std(D(1:m(j):n-m(j)+1));
+    % avar.sigerr(j)=avar.sig(j)/sqrt(n/m(j));
     
     %normal Allan deviation 
     avar.sig2(j)=sqrt(0.5*mean((diff(D(1:m(j):n-m(j)+1)).^2)));
     avar.sig2err(j)=avar.sig2(j)/sqrt(n/m(j));
     
     %overlapping Allan deviation
-    z1=D(m(j)+1:n+1-m(j));
-    z2=D(1:n+1-2*m(j));
-    u=sum((z1-z2).^2);
-    avar.osig(j)=sqrt(u/(n+1-2*m(j))/2);
-    avar.osigerr(j)=avar.osig(j)/sqrt(n-m(j));
+%     z1=D(m(j)+1:n+1-m(j));
+%     z2=D(1:n+1-2*m(j));
+%     u=sum((z1-z2).^2);
+%     avar.osig(j)=sqrt(u/(n+1-2*m(j))/2);
+%     avar.osigerr(j)=avar.osig(j)/sqrt(n-m(j));
     
 %     %modified Allan deviation
 %     u=zeros(1,n+2-3*m(j));
@@ -127,7 +127,7 @@ for j=1:jj
 
     % toc
     
-end;
+end
 
 avar.tau1=m/data.rate;
 avar.tauerr=tau-avar.tau1;
